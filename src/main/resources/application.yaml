@@ -7,6 +7,22 @@ spring:
     password: ${POSTGRES_PASSWORD}
     url: ${POSTGRES_URL}
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 3000ms
+          max-interval: 10000ms
+          multiplier: 2.0
+          max-retries: 3
+
+
 
   jpa:
 
