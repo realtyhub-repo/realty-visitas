@@ -1,0 +1,28 @@
+package service.visitas.exceptions;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import service.visitas.dto.internal.ErrorResponse;
+
+import java.time.LocalDateTime;
+
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+
+
+    @ExceptionHandler(AsignacionNoEncontradaException.class)
+    public ResponseEntity<ErrorResponse> handleAsignacionNoEncontradaException(AsignacionNoEncontradaException ex){
+        return construirRespuesta(HttpStatus.NOT_FOUND,ex.getMessage());
+    }
+
+    private ResponseEntity<ErrorResponse> construirRespuesta(HttpStatus status, String mensaje){
+        ErrorResponse error = new ErrorResponse(mensaje, status.value(), LocalDateTime.now());
+        return ResponseEntity.status(status).body(error);
+
+    }
+
+}
