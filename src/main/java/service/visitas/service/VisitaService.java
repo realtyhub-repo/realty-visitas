@@ -115,6 +115,18 @@ public class VisitaService {
 
     }
 
+    @Transactional
+    public int cancelarPendientesPorPropiedad(UUID propiedadId) {
+        List<Visita> pendientes = visitaRepository
+                .findByPropiedadIdAndEstadoVisitaAndFechaHoraGreaterThanEqual(
+                        propiedadId, EstadoVisita.PROGRAMADA, LocalDateTime.now(ZONA));
+
+        pendientes.forEach(visita -> visita.setEstadoVisita(EstadoVisita.CANCELADA));
+        visitaRepository.saveAll(pendientes);
+
+        return pendientes.size();
+    }
+
     @Transactional(readOnly = true)
     public List<OcupacionResponse> obtenerOcupacionPropiedad(UUID propiedadId, LocalDate fecha) {
         LocalDateTime desde = fecha.atStartOfDay();
