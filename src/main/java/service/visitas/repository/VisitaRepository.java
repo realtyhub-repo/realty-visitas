@@ -49,5 +49,8 @@ public interface VisitaRepository extends JpaRepository<Visita, UUID> {
 
     Optional<Visita> findByLeadIdAndEstadoVisita(UUID leadId, EstadoVisita estado);
 
+    List<Visita> findByPropiedadIdAndEstadoVisitaAndFechaHoraGreaterThanEqual(
+            UUID propiedadId, EstadoVisita estado, LocalDateTime desde);
+
     boolean existsByLeadIdAndEstadoVisita(UUID leadId, EstadoVisita estado);
 }
