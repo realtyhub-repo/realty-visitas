@@ -29,7 +29,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VisitaService {
 
-    // Colombia es UTC-5 sin horario de verano. Así "ahora" no depende de la zona del servidor.
+
     private static final ZoneId ZONA = ZoneId.of("America/Bogota");
     private static final int DIAS_POR_DEFECTO = 30;
 
@@ -40,9 +40,7 @@ public class VisitaService {
     private final VisitaRepository visitaRepository;
     private final VisitasProperties visitasProperties;
 
-    // ------------------------------------------------------------------
-    // INTERNO: qué agentes de la lista están ocupados a esa hora (la usa Lead)
-    // ------------------------------------------------------------------
+
     @Transactional(readOnly = true)
     public AgentesOcupadosResponse consultarAgentesOcupados(List<UUID> agenteIds, LocalDateTime fechaHora) {
 
@@ -64,9 +62,7 @@ public class VisitaService {
                 .build();
     }
 
-    // ------------------------------------------------------------------
-    // INTERNO: reservar el slot (la usa Lead al crear el lead o al pedir otra visita)
-    // ------------------------------------------------------------------
+
     @Transactional
     public VisitaResponse reservar(ReservarVisitaRequest request) {
 
@@ -74,13 +70,12 @@ public class VisitaService {
         validarSlot(inicio);
         LocalDateTime fin = calcularFin(inicio);
 
-        // Pre-chequeos: dan mensajes claros en el caso normal.
-        // La defensa real contra carreras son los constraints de la BD (ver el catch).
+
         if (visitaRepository.existsByLeadIdAndEstadoVisita(request.leadId(), EstadoVisita.PROGRAMADA)) {
             throw new VisitaYaExisteException("Este lead ya tiene una visita programada");
         }
 
-        // La propiedad va primero: si está ocupada no tiene sentido probar con otro agente.
+
         if (visitaRepository.existsByPropiedadIdAndEstadoVisitaNotAndFechaHoraLessThanAndFechaHoraFinGreaterThan(
                 request.propiedadId(), EstadoVisita.CANCELADA, fin, inicio)) {
             throw new PropiedadOcupadaException("La propiedad ya tiene una visita en ese horario");
@@ -102,16 +97,14 @@ public class VisitaService {
                 .build();
 
         try {
-            // saveAndFlush para que el constraint dispare aquí y no al cerrar la transacción
+
             return VisitaResponse.from(visitaRepository.saveAndFlush(visita));
         } catch (DataIntegrityViolationException e) {
             throw traducirViolacion(e);
         }
     }
 
-    // ------------------------------------------------------------------
-    // INTERNO: compensación si Lead falla después de reservar. Idempotente.
-    // ------------------------------------------------------------------
+
     @Transactional
     public void cancelarPorLead(UUID leadId) {
         visitaRepository.findByLeadIdAndEstadoVisita(leadId, EstadoVisita.PROGRAMADA)
@@ -119,18 +112,15 @@ public class VisitaService {
                     visita.setEstadoVisita(EstadoVisita.CANCELADA);
                     visitaRepository.save(visita);
                 });
-        // Si no hay visita pendiente, no es un error.
+
     }
 
-    // ------------------------------------------------------------------
-    // PÚBLICO: ocupación de una propiedad en un día (calendario del front)
-    // ------------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<OcupacionResponse> obtenerOcupacionPropiedad(UUID propiedadId, LocalDate fecha) {
         LocalDateTime desde = fecha.atStartOfDay();
         LocalDateTime hasta = fecha.plusDays(1).atStartOfDay();
 
-        // Solo inicio y fin: nada de cliente ni agente.
+
         return visitaRepository
                 .findByPropiedadIdAndEstadoVisitaNotAndFechaHoraGreaterThanEqualAndFechaHoraLessThanOrderByFechaHora(
                         propiedadId, EstadoVisita.CANCELADA, desde, hasta)
@@ -139,9 +129,6 @@ public class VisitaService {
                 .toList();
     }
 
-    // ------------------------------------------------------------------
-    // Mis visitas: el CLIENTE ve las suyas; cualquier otro rol ve las que tiene como agente
-    // ------------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<VisitaResponse> listarMisVisitas(ContextoUsuario contexto, EstadoVisita estado,
                                                  LocalDateTime desde, LocalDateTime hasta) {
@@ -173,16 +160,13 @@ public class VisitaService {
         return visitas.stream().map(VisitaResponse::from).toList();
     }
 
-    // ------------------------------------------------------------------
-    // REALIZADA: agente dueño o admin. CANCELADA: agente dueño, admin o el cliente de la visita.
-    // ------------------------------------------------------------------
     @Transactional
     public VisitaResponse cambiarEstado(UUID visitaId, EstadoVisita nuevoEstado, ContextoUsuario contexto) {
 
         Visita visita = visitaRepository.findById(visitaId)
                 .orElseThrow(() -> new VisitaNoEncontradaException("Visita no encontrada"));
 
-        // Autorización primero, antes de revelar nada del estado de la visita
+
         boolean esAgenteDueno = visita.getAgenteId().equals(contexto.userId());
         boolean esAdmin = contexto.rol() == RolUsuario.ADMINISTRADOR_CENTRAL;
         boolean clienteCancelaLaSuya = nuevoEstado == EstadoVisita.CANCELADA
@@ -192,7 +176,7 @@ public class VisitaService {
             throw new AccesoNoAutorizadoException("No tienes permiso sobre esta visita");
         }
 
-        // Solo se sale de PROGRAMADA, y nunca hacia PROGRAMADA
+
         if (visita.getEstadoVisita() != EstadoVisita.PROGRAMADA || nuevoEstado == EstadoVisita.PROGRAMADA) {
             throw new TransicionInvalidaException(
                     "No se puede pasar de " + visita.getEstadoVisita() + " a " + nuevoEstado);
@@ -219,7 +203,7 @@ public class VisitaService {
         if (fechaHora == null) {
             throw new FechaInvalidaException("La fecha y hora de la visita son obligatorias");
         }
-        // Solo se trunca el inicio: el fin sale de sumarle minutos enteros.
+
         return fechaHora.truncatedTo(ChronoUnit.MINUTES);
     }
 
@@ -230,12 +214,12 @@ public class VisitaService {
     private void validarSlot(LocalDateTime inicio) {
         LocalDateTime fin = calcularFin(inicio);
 
-        // La fecha debe ser futura
+
         if (!inicio.isAfter(ahora())) {
             throw new FechaInvalidaException("La fecha de la visita debe ser futura");
         }
 
-        // Inicio y fin deben caer el mismo día
+
         if (!inicio.toLocalDate().equals(fin.toLocalDate())) {
             throw new FueraDeHorarioException("El inicio y el fin de la visita deben ser el mismo día");
         }
@@ -266,6 +250,6 @@ public class VisitaService {
                 return new VisitaYaExisteException("Este lead ya tiene una visita programada");
             }
         }
-        return e; // otro tipo de violación: que suba tal cual
+        return e;
     }
 }

@@ -19,8 +19,6 @@ public record ReservarVisitaRequest(
         @NotNull
         UUID agenteId,
 
-        // Que sea futura se valida en VisitaService con la hora de Colombia,
-        // no con @Future, que usaría la zona horaria del servidor.
         @NotNull
         LocalDateTime fechaHora
 ) {}

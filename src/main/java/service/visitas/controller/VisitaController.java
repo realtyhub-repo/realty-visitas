@@ -25,7 +25,7 @@ public class VisitaController {
 
     private final VisitaService visitaService;
 
-    // Calendario del front: qué horas ya están tomadas para esa propiedad ese día
+
     @GetMapping("/propiedad/{propiedadId}/ocupacion")
     public ResponseEntity<List<OcupacionResponse>> obtenerOcupacion(
             @PathVariable UUID propiedadId,
