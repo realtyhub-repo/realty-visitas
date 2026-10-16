@@ -13,17 +13,23 @@ public record VisitaResponse(
         UUID propiedadId,
         UUID clienteId,
         UUID agenteId,
+        String nombreAgente,
         UUID leadId,
         LocalDateTime fechaHora,
         LocalDateTime fechaHoraFin,
         EstadoVisita estadoVisita
 ) {
     public static VisitaResponse from(Visita visita) {
+        return from(visita, null);
+    }
+
+    public static VisitaResponse from(Visita visita, String nombreAgente) {
         return VisitaResponse.builder()
                 .id(visita.getId())
                 .propiedadId(visita.getPropiedadId())
                 .clienteId(visita.getClienteId())
                 .agenteId(visita.getAgenteId())
+                .nombreAgente(nombreAgente)
                 .leadId(visita.getLeadId())
                 .fechaHora(visita.getFechaHora())
                 .fechaHoraFin(visita.getFechaHoraFin())

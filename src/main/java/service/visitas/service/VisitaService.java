@@ -22,7 +22,9 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,6 +41,7 @@ public class VisitaService {
 
     private final VisitaRepository visitaRepository;
     private final VisitasProperties visitasProperties;
+    private final UsuarioClientService usuarioClientService;
 
 
     @Transactional(readOnly = true)
@@ -169,7 +172,12 @@ public class VisitaService {
                             userId, estado, desdeEfectivo, hastaEfectivo);
         }
 
-        return visitas.stream().map(VisitaResponse::from).toList();
+        Map<UUID, String> nombresAgentes = new HashMap<>();
+
+        return visitas.stream()
+                .map(v -> VisitaResponse.from(v, nombresAgentes.computeIfAbsent(
+                        v.getAgenteId(), usuarioClientService::buscarNombre)))
+                .toList();
     }
 
     @Transactional
@@ -200,7 +208,8 @@ public class VisitaService {
 
         visita.setEstadoVisita(nuevoEstado);
         // TODO: publicar visita.realizada / visita.cancelada por Rabbit cuando otro servicio lo necesite
-        return VisitaResponse.from(visitaRepository.save(visita));
+        Visita guardada = visitaRepository.save(visita);
+        return VisitaResponse.from(guardada, usuarioClientService.buscarNombre(guardada.getAgenteId()));
     }
 
     // ==================================================================
