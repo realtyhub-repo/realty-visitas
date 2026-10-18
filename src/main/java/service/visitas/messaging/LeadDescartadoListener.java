@@ -6,6 +6,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import service.visitas.config.RabbitConfig;
 import service.visitas.dto.event.LeadDescartadoEvent;
+import service.visitas.dto.event.MotivoCancelacion;
 import service.visitas.service.VisitaService;
 
 @Slf4j
@@ -17,7 +18,7 @@ public class LeadDescartadoListener {
 
     @RabbitListener(queues = RabbitConfig.QUEUE_LEAD_DESCARTADO)
     public void alDescartarLead(LeadDescartadoEvent evento) {
-        visitaService.cancelarPorLead(evento.leadId());
+        visitaService.cancelarPorLead(evento.leadId(), MotivoCancelacion.LEAD_DESCARTADO);
         log.info("Lead {} descartado: visita programada cancelada si existía", evento.leadId());
     }
 }
