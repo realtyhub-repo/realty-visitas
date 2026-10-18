@@ -6,6 +6,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import service.visitas.config.VisitasProperties;
+import service.visitas.dto.event.MotivoCancelacion;
 import service.visitas.dto.internal.RolUsuario;
 import service.visitas.dto.request.ReservarVisitaRequest;
 import service.visitas.dto.response.AgentesOcupadosResponse;
@@ -42,6 +43,7 @@ public class VisitaService {
     private final VisitaRepository visitaRepository;
     private final VisitasProperties visitasProperties;
     private final UsuarioClientService usuarioClientService;
+    private final VisitaEventPublisher visitaEventPublisher;
 
 
     @Transactional(readOnly = true)
@@ -99,21 +101,27 @@ public class VisitaService {
                 .estadoVisita(EstadoVisita.PROGRAMADA)
                 .build();
 
-        try {
+        Visita guardada;
 
-            return VisitaResponse.from(visitaRepository.saveAndFlush(visita));
+        try {
+            guardada = visitaRepository.saveAndFlush(visita);
         } catch (DataIntegrityViolationException e) {
             throw traducirViolacion(e);
         }
+
+        visitaEventPublisher.publicarAgendada(guardada);
+
+        return VisitaResponse.from(guardada);
     }
 
 
     @Transactional
-    public void cancelarPorLead(UUID leadId) {
+    public void cancelarPorLead(UUID leadId, MotivoCancelacion motivo) {
         visitaRepository.findByLeadIdAndEstadoVisita(leadId, EstadoVisita.PROGRAMADA)
                 .ifPresent(visita -> {
                     visita.setEstadoVisita(EstadoVisita.CANCELADA);
-                    visitaRepository.save(visita);
+                    Visita guardada = visitaRepository.save(visita);
+                    visitaEventPublisher.publicarCancelada(guardada, null, motivo);
                 });
 
     }
@@ -126,6 +134,8 @@ public class VisitaService {
 
         pendientes.forEach(visita -> visita.setEstadoVisita(EstadoVisita.CANCELADA));
         visitaRepository.saveAll(pendientes);
+        pendientes.forEach(visita ->
+                visitaEventPublisher.publicarCancelada(visita, null, MotivoCancelacion.PROPIEDAD_NO_DISPONIBLE));
 
         return pendientes.size();
     }
@@ -207,14 +217,30 @@ public class VisitaService {
         }
 
         visita.setEstadoVisita(nuevoEstado);
-        // TODO: publicar visita.realizada / visita.cancelada por Rabbit cuando otro servicio lo necesite
         Visita guardada = visitaRepository.save(visita);
+
+        if (nuevoEstado == EstadoVisita.CANCELADA) {
+            visitaEventPublisher.publicarCancelada(guardada, contexto.userId(), motivoDeCancelacion(guardada, contexto));
+        } else {
+            visitaEventPublisher.publicarRealizada(guardada);
+        }
+
         return VisitaResponse.from(guardada, usuarioClientService.buscarNombre(guardada.getAgenteId()));
     }
 
     // ==================================================================
     // Helpers
     // ==================================================================
+
+    private MotivoCancelacion motivoDeCancelacion(Visita visita, ContextoUsuario contexto) {
+        if (visita.getClienteId().equals(contexto.userId())) {
+            return MotivoCancelacion.CLIENTE;
+        }
+        if (visita.getAgenteId().equals(contexto.userId())) {
+            return MotivoCancelacion.AGENTE;
+        }
+        return MotivoCancelacion.ADMINISTRADOR;
+    }
 
     private LocalDateTime ahora() {
         return LocalDateTime.now(ZONA).truncatedTo(ChronoUnit.MINUTES);

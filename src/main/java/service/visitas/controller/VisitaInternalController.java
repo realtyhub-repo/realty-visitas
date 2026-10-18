@@ -6,6 +6,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import service.visitas.dto.event.MotivoCancelacion;
 import service.visitas.dto.request.ReservarVisitaRequest;
 import service.visitas.dto.response.AgentesOcupadosResponse;
 import service.visitas.dto.response.VisitaResponse;
@@ -41,7 +42,7 @@ public class VisitaInternalController {
 
     @DeleteMapping("/lead/{leadId}")
     public ResponseEntity<Void> cancelarPorLead(@PathVariable UUID leadId) {
-        visitaService.cancelarPorLead(leadId);
+        visitaService.cancelarPorLead(leadId, MotivoCancelacion.COMPENSACION);
         return ResponseEntity.noContent().build();
     }
 }

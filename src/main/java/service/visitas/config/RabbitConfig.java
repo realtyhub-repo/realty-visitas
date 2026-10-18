@@ -20,6 +20,10 @@ public class RabbitConfig {
 
     public static final String RK_LEAD_DESCARTADO = "lead.descartado";
 
+    public static final String RK_VISITA_AGENDADA = "visita.agendada";
+    public static final String RK_VISITA_CANCELADA = "visita.cancelada";
+    public static final String RK_VISITA_REALIZADA = "visita.realizada";
+
     public static final String QUEUE_PROPIEDAD_ESTADO_CAMBIADO = "visitas.propiedad-estado-cambiado";
     public static final String QUEUE_PROPIEDAD_ESTADO_CAMBIADO_DLQ = "visitas.propiedad-estado-cambiado.dlq";
 
